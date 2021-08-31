@@ -66,7 +66,8 @@ def main():
                 for photo in page_photos:
                     filename = photo['filename']
                     download_url = photo['baseUrl'] + '=d'
-                    download_photo(download_url, output, filename)
+                    if not os.path.exists(os.path.join(output, filename)):
+                        download_photo(download_url, output, filename)
 
             except:   # I don't know what type of error may occur
                 # gphoto_service.close()
