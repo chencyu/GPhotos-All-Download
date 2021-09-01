@@ -1,5 +1,7 @@
 import os.path
 import requests
+from time import sleep
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -12,12 +14,16 @@ credentials_json = "credentials.json"
 
 def download_photo(url: str, destination_folder: str, file_name: str):
     response = requests.get(url)
-    if response.status_code == 200:
-        print('Downloading file {0}'.format(
-            os.path.join(destination_folder, file_name)))
-        with open(os.path.join(destination_folder, file_name), 'wb') as f:
-            f.write(response.content)
-            f.close()
+    retry = 10
+    while retry > 0:
+        if response.status_code == 200:
+            print('Downloading file {0}'.format(
+                os.path.join(destination_folder, file_name)))
+            with open(os.path.join(destination_folder, file_name), 'wb') as f:
+                f.write(response.content)
+                f.close()
+            return 0
+        retry -= 1
 
 
 def main():
@@ -56,8 +62,10 @@ def main():
         # 取得所有的照片
         nextPageToken = None
         while True:
+            sleep(0.1)
 
             try:  # 每次取 1 page 25張
+                print("Get page: {}".format(nextPageToken))
                 page_photos = gphoto_service.mediaItems().list(
                     pageSize=25, pageToken=nextPageToken).execute()
                 nextPageToken = page_photos['nextPageToken']
@@ -69,8 +77,12 @@ def main():
                     if not os.path.exists(os.path.join(output, filename)):
                         download_photo(download_url, output, filename)
 
-            except:   # I don't know what type of error may occur
-                # gphoto_service.close()
+            # except Exception as e:
+            except RefreshError as e:
+                print(e)
+                with open('exception.log', 'a') as elog:
+                    elog.write("{}".format(e))
+                    elog.writelines("[finalPageToken]:[{}]".format(nextPageToken))
                 break
 
 
